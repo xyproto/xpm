@@ -78,8 +78,8 @@ func inc(s string, allowedLetters []rune) string {
 	}
 	if len(s) == 1 {
 		if lastRuneOfString != lastLetter { // one digit, not the last letter
-			firstRuneOfString := lastRuneOfString
-			pos := strings.IndexRune(string(allowedLetters), firstRuneOfString)
+			// lastRuneOfString is the only rune in this string
+			pos := strings.IndexRune(string(allowedLetters), lastRuneOfString)
 			pos++
 			if pos == len(allowedLetters) {
 				pos = 0
