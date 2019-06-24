@@ -11,14 +11,16 @@ import (
 // Encoder contains encoding configuration that is used by the Encode method
 type Encoder struct {
 	// These are used when encoding the color ID as ASCII
-	FirstLetter uint8 // default: 'a'
-	LastLetter  uint8 // default: 'z'
+	AllowedLetters []rune
 
 	// The internal image name
 	ImageName string
 
 	// The alpha threshold
 	AlphaThreshold float64
+
+	// With comments?
+	Comments bool
 }
 
 // hexify converts a slice of bytes to a slice of hex strings on the form 0x00
@@ -62,31 +64,45 @@ func c2hex(c color.Color, threshold float64) string {
 }
 
 // inc will advance to the next string. Uses a-z. From "a" to "b", "zz" to "aaa" etc
-func inc(s string, firstLetter, lastLetter uint8) string {
+func inc(s string, allowedLetters []rune) string {
+	firstLetter := allowedLetters[0]
+	lastLetter := allowedLetters[len(allowedLetters)-1]
 	if s == "" {
 		return string(firstLetter)
 	}
+	var lastRuneOfString rune
+	for i, r := range s {
+		if i == len(s)-1 {
+			lastRuneOfString = r
+		}
+	}
 	if len(s) == 1 {
-		if s[len(s)-1] != lastLetter { // one digit, not the last letter
-			return string(s[0] + 1) // return the next letter
+		if lastRuneOfString != lastLetter { // one digit, not the last letter
+			firstRuneOfString := lastRuneOfString
+			pos := strings.IndexRune(string(allowedLetters), firstRuneOfString)
+			pos++
+			if pos == len(allowedLetters) {
+				pos = 0
+			}
+			return string(allowedLetters[pos]) // return the next letter
 		}
 		// one digit, and it is the last letter
 		return string(firstLetter) + string(firstLetter)
 	}
-	if s[len(s)-1] == lastLetter { // two or more digits, the last digit is z
-		return inc(s[:len(s)-1], firstLetter, lastLetter) + string(firstLetter) // increase next to last digit with one + "a"
+	if lastRuneOfString == lastLetter { // two or more digits, the last digit is z
+		return inc(s[:len(s)-1], allowedLetters) + string(firstLetter) // increase next to last digit with one + "a"
 	}
 	// two or more digits, the last digit is not z
-	return s[:len(s)-1] + inc(string(s[len(s)-1]), firstLetter, lastLetter) // first digit + last digit increases with one
+	return s[:len(s)-1] + inc(string(lastRuneOfString), allowedLetters) // first digit + last digit increases with one
 }
 
 // num2charcode converts a number to ascii letters, like 0 to "a", and 1 to "b".
 // Can output multiple letters for higher numbers.
-func num2charcode(num int, firstLetter, lastLetter uint8) string {
+func num2charcode(num int, allowedLetters []rune) string {
 	// This is not the efficient way, but it's only called once per image conversion
-	d := string(firstLetter)
+	d := string(allowedLetters[0])
 	for i := 0; i < num; i++ {
-		d = inc(d, firstLetter, lastLetter)
+		d = inc(d, allowedLetters)
 	}
 	return d
 }
@@ -112,29 +128,35 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	}
 
 	// Find the character code of the highest index
-	highestCharCode := num2charcode(len(paletteSlice)-1, enc.FirstLetter, enc.LastLetter)
+	highestCharCode := num2charcode(len(paletteSlice)-1, enc.AllowedLetters)
 	charsPerPixel := len(highestCharCode)
 	colors := len(paletteSlice)
 
 	// Write the header, now that we know the right values
 	fmt.Fprint(w, "/* XPM */\n")
 	fmt.Fprintf(w, "static char * %s[] = {\n", enc.ImageName)
-	fmt.Fprint(w, "/* <Values> */\n")
+	if enc.Comments {
+		fmt.Fprint(w, "/* <Values> */\n")
+	}
 	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
 
 	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
-	fmt.Fprint(w, "/* <Colors> */\n")
+	if enc.Comments {
+		fmt.Fprint(w, "/* <Colors> */\n")
+	}
 	lookup := make(map[string]string) // hexcolor -> paletteindexchars, unordered
-	charcode := strings.Repeat("a", charsPerPixel)
+	charcode := strings.Repeat(string(enc.AllowedLetters[0]), charsPerPixel)
 	for index, hexColor := range paletteSlice {
 		fmt.Fprintf(w, "\"%s c %s\",\n", charcode, hexColor)
 		lookup[hexColor] = charcode
 		index++
-		charcode = inc(charcode, enc.FirstLetter, enc.LastLetter)
+		charcode = inc(charcode, enc.AllowedLetters)
 	}
 
 	// Now write the pixels, as character codes
-	fmt.Fprint(w, "/* <Pixels> */\n")
+	if enc.Comments {
+		fmt.Fprint(w, "/* <Pixels> */\n")
+	}
 	lastY := m.Bounds().Max.Y - 1
 	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
 		fmt.Fprintf(w, "\"")
@@ -159,6 +181,10 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 
 // Encode will encode the image as XBM, using "img" as the image name
 func Encode(w io.Writer, m image.Image) error {
-	e := &Encoder{'a', 'z', "img", 0.5}
+	// 93 allowed ASCII letters is correct, ref. https://en.wikipedia.org/wiki/X_PixMap
+	// these letters have been moved to the front, for prettier representation
+	// of images with few colors, in text editors: *o+
+	allowedLetters := []rune(" +*o!#$%&'(),-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnpqrstuvwxyz{|}~")
+	e := &Encoder{allowedLetters, "img", 0.5, false}
 	return e.Encode(w, m)
 }
