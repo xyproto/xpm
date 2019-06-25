@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -28,6 +29,9 @@ type Encoder struct {
 
 	// These are used when encoding the color ID as ASCII
 	AllowedLetters []rune
+
+	// MaxColors is the maximum allowed number of colors, or -1 for no limit. The default is 4096.
+	MaxColors int
 }
 
 func NewEncoder(imageName string) *Encoder {
@@ -42,7 +46,7 @@ func NewEncoder(imageName string) *Encoder {
 	} else {
 		imageName = "img"
 	}
-	return &Encoder{imageName, false, 0.5, []rune(AllowedLetters)}
+	return &Encoder{imageName, true, 0.5, []rune(AllowedLetters), 4096}
 }
 
 // hexify converts a slice of bytes to a slice of hex strings on the form 0x00
@@ -118,6 +122,13 @@ func inc(s string, allowedLetters []rune) string {
 	return s[:len(s)-1] + inc(string(lastRuneOfString), allowedLetters) // first digit + last digit increases with one
 }
 
+func validColorID(s string) bool {
+	// avoid double question marks and comment markers
+	// double question marks in strings may have a special meaning in C
+	// also avoid strings starting or ending with *, / or ? since they may be combined when using the color IDs in the pixel data
+	return !(strings.Contains(s, "??") || strings.Contains(s, "/*") || strings.Contains(s, "//") || strings.Contains(s, "*/") || strings.HasPrefix(s, "*") || strings.HasSuffix(s, "*") || strings.HasPrefix(s, "/") || strings.HasSuffix(s, "/") || strings.HasPrefix(s, "?") || strings.HasSuffix(s, "?"))
+}
+
 // num2charcode converts a number to ascii letters, like 0 to "a", and 1 to "b".
 // Can output multiple letters for higher numbers.
 func num2charcode(num int, allowedLetters []rune) string {
@@ -125,8 +136,10 @@ func num2charcode(num int, allowedLetters []rune) string {
 	d := string(allowedLetters[0])
 	for i := 0; i < num; i++ {
 		d = inc(d, allowedLetters)
-		for strings.Contains(d, "??") {
-			// avoid double question marks, since they have a special meaning in C
+
+		// check if the color ID may cause problems
+		for !validColorID(d) {
+			// try the next one
 			d = inc(d, allowedLetters)
 		}
 	}
@@ -170,25 +183,41 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 
 	// Write the header, now that we know the right values
 	fmt.Fprint(w, "/* XPM */\n")
-	fmt.Fprintf(w, "static char * %s[] = {\n", enc.ImageName)
+	fmt.Fprintf(w, "static char *%s[] = {\n", enc.ImageName)
 	if enc.Comments {
-		fmt.Fprint(w, "/* <Values> */\n")
+		fmt.Fprint(w, "/* Values */\n")
 	}
 	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
 
+	// Imlib does not like this
+	if colors > 32766 {
+		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
+	}
+
+	if colors > enc.MaxColors {
+		panic("TOO MANY COLORS")
+	}
+
 	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
 	if enc.Comments {
-		fmt.Fprint(w, "/* <Colors> */\n")
+		fmt.Fprint(w, "/* Colors */\n")
 	}
 	lookup := make(map[string]string) // hexcolor -> paletteindexchars, unordered
 	charcode := strings.Repeat(string(enc.AllowedLetters[0]), charsPerPixel)
 	for index, hexColor := range paletteSlice {
+		trimmed := strings.TrimSpace(charcode)
+		if len(trimmed) < len(charcode) {
+			diffLength := len(charcode) - len(trimmed)
+			charcode = strings.TrimSpace(charcode) + strings.Repeat(" ", diffLength)
+		}
 		fmt.Fprintf(w, "\"%s c %s\",\n", charcode, hexColor)
 		lookup[hexColor] = charcode
 		index++
 		charcode = inc(charcode, enc.AllowedLetters)
-		for strings.Contains(charcode, "??") {
-			// avoid double question marks, since they have a special meaning in C
+
+		// check if the color ID may cause problems
+		for !validColorID(charcode) {
+			// try the next one
 			charcode = inc(charcode, enc.AllowedLetters)
 		}
 
@@ -196,7 +225,7 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 
 	// Now write the pixels, as character codes
 	if enc.Comments {
-		fmt.Fprint(w, "/* <Pixels> */\n")
+		fmt.Fprint(w, "/* Pixels */\n")
 	}
 	lastY := m.Bounds().Max.Y - 1
 	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
