@@ -46,7 +46,7 @@ func NewEncoder(imageName string) *Encoder {
 	} else {
 		imageName = "img"
 	}
-	return &Encoder{imageName, true, 0.5, []rune(AllowedLetters), 4096}
+	return &Encoder{imageName, true, 0.5, []rune(AllowedLetters), 256}
 }
 
 // hexify converts a slice of bytes to a slice of hex strings on the form 0x00
@@ -84,7 +84,6 @@ func c2hex(c color.Color, threshold float64) string {
 			return "red"
 		}
 	}
-
 	// return hex color code on the form #000000
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 }
@@ -153,10 +152,21 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
 
+	var pal color.Palette
+	if enc.MaxColors == 256 {
+		for _, rgb := range palette256 {
+			pal = append(pal, color.NRGBA{rgb[0], rgb[1], rgb[2], 0})
+		}
+	}
+
 	paletteMap := make(map[string]color.Color) // hexstring -> color, unordered
 	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
 		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 			c := m.At(x, y)
+			// TODO: Create both paletteMap and lookupMap here
+			if enc.MaxColors == 256 {
+				c = pal.Convert(c)
+			}
 			paletteMap[c2hex(c, enc.AlphaThreshold)] = c
 		}
 	}
@@ -232,6 +242,9 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		fmt.Fprintf(w, "\"")
 		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 			c := m.At(x, y)
+			if enc.MaxColors == 256 {
+				c = pal.Convert(c)
+			}
 			charcode := lookup[c2hex(c, enc.AlphaThreshold)]
 			// Now write the id code for the hex color to the file
 			fmt.Fprint(w, charcode)
