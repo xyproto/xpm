@@ -7,20 +7,30 @@ import (
 	"io"
 	"strings"
 )
+// AllowedLetters is the 93 available ASCII letters
+// ref: https://en.wikipedia.org/wiki/X_PixMap
+// They are in the same order as GIMP, but with the question mark character as well.
+// Double question marks may result in trigraphs in C, but this is avoided in the code.
+// ref: https://en.wikipedia.org/wiki/Digraphs_and_trigraphs#C
+const AllowedLetters = " .+@#$%&*=-;>,')!~{]^/(_:<[}|1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`?"
 
 // Encoder contains encoding configuration that is used by the Encode method
 type Encoder struct {
-	// These are used when encoding the color ID as ASCII
-	AllowedLetters []rune
-
 	// The internal image name
 	ImageName string
+
+	// With comments?
+	Comments bool
 
 	// The alpha threshold
 	AlphaThreshold float64
 
-	// With comments?
-	Comments bool
+	// These are used when encoding the color ID as ASCII
+	AllowedLetters []rune
+}
+
+func NewEncoder(imageName string) *Encoder {
+	return &Encoder{imageName, false, 0.5, []rune(AllowedLetters)}
 }
 
 // hexify converts a slice of bytes to a slice of hex strings on the form 0x00
@@ -103,6 +113,10 @@ func num2charcode(num int, allowedLetters []rune) string {
 	d := string(allowedLetters[0])
 	for i := 0; i < num; i++ {
 		d = inc(d, allowedLetters)
+		for strings.Contains(d, "??") {
+			// avoid double question marks, since they have a special meaning in C
+			d = inc(d, allowedLetters)
+		}
 	}
 	return d
 }
@@ -123,6 +137,16 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	}
 
 	var paletteSlice []string // hexstrings, ordered
+	// First append the "None" color, for transparency, so that it is first
+	for hexColor := range paletteMap {
+		if hexColor == "None" {
+			paletteSlice = append(paletteSlice, hexColor)
+			// Then remove None from the paletteMap and break out
+			delete(paletteMap, "None")
+			break
+		}
+	}
+	// Then append the rest of the colors
 	for hexColor := range paletteMap {
 		paletteSlice = append(paletteSlice, hexColor)
 	}
@@ -151,6 +175,11 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		lookup[hexColor] = charcode
 		index++
 		charcode = inc(charcode, enc.AllowedLetters)
+		for strings.Contains(charcode, "??") {
+			// avoid double question marks, since they have a special meaning in C
+			charcode = inc(charcode, enc.AllowedLetters)
+		}
+
 	}
 
 	// Now write the pixels, as character codes
@@ -181,10 +210,5 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 
 // Encode will encode the image as XBM, using "img" as the image name
 func Encode(w io.Writer, m image.Image) error {
-	// 93 allowed ASCII letters is correct, ref. https://en.wikipedia.org/wiki/X_PixMap
-	// these letters have been moved to the front, for prettier representation
-	// of images with few colors, in text editors: *o+
-	allowedLetters := []rune(" +*o!#$%&'(),-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnpqrstuvwxyz{|}~")
-	e := &Encoder{allowedLetters, "img", 0.5, false}
-	return e.Encode(w, m)
+	return NewEncoder("img").Encode(w, m)
 }
