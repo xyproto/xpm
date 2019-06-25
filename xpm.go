@@ -5,9 +5,15 @@ import (
 	"image"
 	"image/color"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 // AllowedLetters is the 93 available ASCII letters
 // ref: https://en.wikipedia.org/wiki/X_PixMap
@@ -150,6 +156,7 @@ func num2charcode(num int, allowedLetters []rune) string {
 // the Encoder struct. The colors are first converted to grayscale, and then
 // with a 50% cutoff they are converted to 1-bit colors.
 func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
+
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
 
@@ -161,19 +168,83 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		}
 	}
 
+	// OK, this is the palce to make adjustments to paletteMap, if it needs to be reduced
+	if len(paletteMap) > enc.MaxColors {
+		fmt.Println("TOO MANY COLORS, NEED TO SHRINK THE PALETTE")
+		fmt.Println("STARTSIZE:", len(paletteMap))
+	}
+	loopCounter := 0
+	for len(paletteMap) > enc.MaxColors && loopCounter < 100 {
+		// 1. pick a random color from the map
+		chosenIndex := rand.Intn(len(paletteMap))
+		var chosenKey string
+		counter := 0
+		var chosenColor color.Color
+		for k, v := range paletteMap {
+			if counter == chosenIndex {
+				chosenKey = k
+				chosenColor = v
+				break
+			}
+			counter++
+		}
+		// 1.5 Create a color.Palette, except the chosenColor
+		var pal color.Palette
+		for _, v := range paletteMap {
+			if v == chosenColor {
+				continue
+			}
+			pal = append(pal, v)
+		}
+		// 2. find the color that is closest in color
+		closestColorIndex := pal.Index(chosenColor)
+		closestColor := pal[closestColorIndex]
+
+		// 3. take the average, use this as the new color for both of them
+		closestByteColor := color.NRGBAModel.Convert(closestColor).(color.NRGBA)
+		chosenByteColor := color.NRGBAModel.Convert(chosenColor).(color.NRGBA)
+
+		chosenByteColor.R = (closestByteColor.R + chosenByteColor.R) / 2
+		chosenByteColor.R = (closestByteColor.G + chosenByteColor.G) / 2
+		chosenByteColor.R = (closestByteColor.B + chosenByteColor.B) / 2
+		chosenByteColor.R = (closestByteColor.A + chosenByteColor.A) / 2
+
+		// 4. Use the new color instead of the chosenColor
+		paletteMap[chosenKey] = chosenByteColor
+		// 5. Delete the closestColor
+		for k, v := range paletteMap {
+			if v == closestColor {
+				delete(paletteMap, k)
+				break
+			}
+		}
+		// 6. Output the new size
+		fmt.Println("New palette size:", len(paletteMap))
+		loopCounter++
+	}
+
 	var paletteSlice []string // hexstrings, ordered
+
 	// First append the "None" color, for transparency, so that it is first
+	var noneColor color.Color
+	removedNone := false
 	for hexColor := range paletteMap {
 		if hexColor == "None" {
 			paletteSlice = append(paletteSlice, hexColor)
 			// Then remove None from the paletteMap and break out
+			noneColor = paletteMap["None"]
 			delete(paletteMap, "None")
+			removedNone = true
 			break
 		}
 	}
 	// Then append the rest of the colors
 	for hexColor := range paletteMap {
 		paletteSlice = append(paletteSlice, hexColor)
+	}
+	// Add back None, so that the map values can be converted to a color.Palette
+	if removedNone {
+		paletteMap["None"] = noneColor
 	}
 
 	// Find the character code of the highest index
@@ -187,16 +258,13 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	if enc.Comments {
 		fmt.Fprint(w, "/* Values */\n")
 	}
-	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
 
 	// Imlib does not like this
 	if colors > 32766 {
 		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
 	}
 
-	if colors > enc.MaxColors {
-		panic("TOO MANY COLORS")
-	}
+	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
 
 	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
 	if enc.Comments {
