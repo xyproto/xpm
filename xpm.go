@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"math"
 )
 
 // AllowedLetters is the 93 available ASCII letters
@@ -145,12 +146,28 @@ func num2charcode(num int, allowedLetters []rune) string {
 	return d
 }
 
+func colorDiff(a, b color.Color) float64 {
+	return math.Sqrt((b.R-a.R)*(b.R-a.R) + (b.G-a.G)*(b.G-a.G) + (b.B-a.B)*(b.B-a.B))
+}
+
+func closest(pal color.Palette, c color.Color) color.Color {
+	closestIndex := 0
+	for i, pColor := range pal {
+		if colorDiff(pColor, c) < smallestDiff {
+			closestIndex := i
+		}
+	}
+	return pal[closestIndex]
+}
+
 // Encode will encode the given image as XBM, using a custom image name from
 // the Encoder struct. The colors are first converted to grayscale, and then
 // with a 50% cutoff they are converted to 1-bit colors.
 func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
+
+	fmt.Println("MAX COLORS", 256)
 
 	var pal color.Palette
 	if enc.MaxColors == 256 {
@@ -159,17 +176,23 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		}
 	}
 
+	fmt.Println("pal", pal)
+	fmt.Println("yes?", pal.Index(color.RGBA{52, 52, 52, 0}))
+
 	paletteMap := make(map[string]color.Color) // hexstring -> color, unordered
 	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
 		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 			c := m.At(x, y)
 			// TODO: Create both paletteMap and lookupMap here
 			if enc.MaxColors == 256 {
+				//byteColor := color.NRGBAModel.Convert(c).(color.NRGBA)
 				c = pal.Convert(c)
 			}
 			paletteMap[c2hex(c, enc.AlphaThreshold)] = c
 		}
 	}
+
+	fmt.Println("paletteMap (0)", paletteMap)
 
 	var paletteSlice []string // hexstrings, ordered
 	// First append the "None" color, for transparency, so that it is first
@@ -185,6 +208,9 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	for hexColor := range paletteMap {
 		paletteSlice = append(paletteSlice, hexColor)
 	}
+
+	fmt.Println("paletteMap (1)", paletteMap)
+	fmt.Println("paletteSlice (0)", paletteSlice)
 
 	// Find the character code of the highest index
 	highestCharCode := num2charcode(len(paletteSlice)-1, enc.AllowedLetters)
