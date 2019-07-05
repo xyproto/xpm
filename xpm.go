@@ -5,9 +5,9 @@ import (
 	"image"
 	"image/color"
 	"io"
+	"math"
 	"os"
 	"strings"
-	"math"
 )
 
 // AllowedLetters is the 93 available ASCII letters
@@ -146,53 +146,62 @@ func num2charcode(num int, allowedLetters []rune) string {
 	return d
 }
 
-func colorDiff(a, b color.Color) float64 {
-	return math.Sqrt((b.R-a.R)*(b.R-a.R) + (b.G-a.G)*(b.G-a.G) + (b.B-a.B)*(b.B-a.B))
+func colorDiff(cc1, cc2 color.Color) float64 {
+	c1 := color.NRGBAModel.Convert(cc1).(color.NRGBA)
+	c2 := color.NRGBAModel.Convert(cc2).(color.NRGBA)
+	return math.Sqrt(float64((c2.R-c1.R)*(c2.R-c1.R) + (c2.G-c1.G)*(c2.G-c1.G) + (c2.B-c1.B)*(c2.B-c1.B)))
 }
 
 func closest(pal color.Palette, c color.Color) color.Color {
+	if len(pal) == 0 {
+		panic("can't find the closest color in an empty palette")
+	}
 	closestIndex := 0
+	smallestDiff := colorDiff(pal[0], c)
 	for i, pColor := range pal {
-		if colorDiff(pColor, c) < smallestDiff {
-			closestIndex := i
+		if x := colorDiff(pColor, c); x < smallestDiff {
+			closestIndex = i
+			smallestDiff = x
 		}
 	}
 	return pal[closestIndex]
 }
 
-// Encode will encode the given image as XBM, using a custom image name from
+// Encode256 will encode the given image as XBM, using a custom image name from
 // the Encoder struct. The colors are first converted to grayscale, and then
 // with a 50% cutoff they are converted to 1-bit colors.
-func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
+func (enc *Encoder) Encode256(w io.Writer, m image.Image) error {
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
 
 	fmt.Println("MAX COLORS", 256)
 
 	var pal color.Palette
-	if enc.MaxColors == 256 {
-		for _, rgb := range palette256 {
-			pal = append(pal, color.NRGBA{rgb[0], rgb[1], rgb[2], 0})
-		}
+	for _, rgb := range palette256 {
+		pal = append(pal, color.NRGBA{rgb[0], rgb[1], rgb[2], 0})
 	}
 
-	fmt.Println("pal", pal)
-	fmt.Println("yes?", pal.Index(color.RGBA{52, 52, 52, 0}))
+	fmt.Println("pal and len(pal)", pal, len(pal))
+	//fmt.Println("yes #1", pal.Index(color.NRGBA{212, 200, 0, 0}))
+	//fmt.Println("yes #2", closest(pal, color.NRGBA{212, 200, 0, 0}))
 
+	fmt.Println("Building palette map...")
 	paletteMap := make(map[string]color.Color) // hexstring -> color, unordered
+	lookupMap := make(map[color.Color]string)  // any color -> hexstring, unordered
 	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
 		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 			c := m.At(x, y)
-			// TODO: Create both paletteMap and lookupMap here
-			if enc.MaxColors == 256 {
-				//byteColor := color.NRGBAModel.Convert(c).(color.NRGBA)
-				c = pal.Convert(c)
-			}
-			paletteMap[c2hex(c, enc.AlphaThreshold)] = c
+			//byteColor := color.NRGBAModel.Convert(c).(color.NRGBA)
+			approx := closest(pal, c)
+			paletteMap[c2hex(approx, enc.AlphaThreshold)] = approx
+			lookupMap[c] = c2hex(approx, enc.AlphaThreshold)
 		}
 	}
 
-	fmt.Println("paletteMap (0)", paletteMap)
+	fmt.Println("Palette map length:", len(paletteMap))
+	fmt.Println("Lookup map length:", len(lookupMap))
+
+	fmt.Println("Building palette slice...")
 
 	var paletteSlice []string // hexstrings, ordered
 	// First append the "None" color, for transparency, so that it is first
@@ -209,8 +218,7 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		paletteSlice = append(paletteSlice, hexColor)
 	}
 
-	fmt.Println("paletteMap (1)", paletteMap)
-	fmt.Println("paletteSlice (0)", paletteSlice)
+	fmt.Println("Outputting XPM...")
 
 	// Find the character code of the highest index
 	highestCharCode := num2charcode(len(paletteSlice)-1, enc.AllowedLetters)
@@ -256,7 +264,114 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 			// try the next one
 			charcode = inc(charcode, enc.AllowedLetters)
 		}
+	}
 
+	// Now write the pixels, as character codes
+	if enc.Comments {
+		fmt.Fprint(w, "/* Pixels */\n")
+	}
+	lastY := m.Bounds().Max.Y - 1
+	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
+		fmt.Println("Writing pixels for y =", y)
+		fmt.Fprintf(w, "\"")
+		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
+			c := m.At(x, y)
+			approxhexcolor := lookupMap[c]
+			palcolor := paletteMap[approxhexcolor]
+			charcode = lookup[c2hex(palcolor, enc.AlphaThreshold)]
+			// Now write the id code for the hex color to the file
+			fmt.Fprint(w, charcode)
+		}
+		if y < lastY {
+			fmt.Fprintf(w, "\",\n")
+		} else {
+			// Don't output a final comma
+			fmt.Fprintf(w, "\"\n")
+		}
+	}
+
+	fmt.Fprintf(w, "};\n")
+
+	return nil
+}
+
+// Encode will encode the given image as XBM, using a custom image name from
+// the Encoder struct. The colors are first converted to grayscale, and then
+// with a 50% cutoff they are converted to 1-bit colors.
+func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
+	if enc.MaxColors == 256 {
+		return enc.Encode256(w, m)
+	}
+	width := m.Bounds().Dx()
+	height := m.Bounds().Dy()
+
+	paletteMap := make(map[string]color.Color) // hexstring -> color, unordered
+	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
+		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
+			c := m.At(x, y)
+			paletteMap[c2hex(c, enc.AlphaThreshold)] = c
+		}
+	}
+
+	var paletteSlice []string // hexstrings, ordered
+	// First append the "None" color, for transparency, so that it is first
+	for hexColor := range paletteMap {
+		if hexColor == "None" {
+			paletteSlice = append(paletteSlice, hexColor)
+			// Then remove None from the paletteMap and break out
+			delete(paletteMap, "None")
+			break
+		}
+	}
+	// Then append the rest of the colors
+	for hexColor := range paletteMap {
+		paletteSlice = append(paletteSlice, hexColor)
+	}
+
+	// Find the character code of the highest index
+	highestCharCode := num2charcode(len(paletteSlice)-1, enc.AllowedLetters)
+	charsPerPixel := len(highestCharCode)
+	colors := len(paletteSlice)
+
+	// Write the header, now that we know the right values
+	fmt.Fprint(w, "/* XPM */\n")
+	fmt.Fprintf(w, "static char *%s[] = {\n", enc.ImageName)
+	if enc.Comments {
+		fmt.Fprint(w, "/* Values */\n")
+	}
+	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
+
+	// Imlib does not like this
+	if colors > 32766 {
+		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
+	}
+
+	if colors > enc.MaxColors {
+		panic("TOO MANY COLORS")
+	}
+
+	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
+	if enc.Comments {
+		fmt.Fprint(w, "/* Colors */\n")
+	}
+	lookup := make(map[string]string) // hexcolor -> paletteindexchars, unordered
+	charcode := strings.Repeat(string(enc.AllowedLetters[0]), charsPerPixel)
+	for index, hexColor := range paletteSlice {
+		trimmed := strings.TrimSpace(charcode)
+		if len(trimmed) < len(charcode) {
+			diffLength := len(charcode) - len(trimmed)
+			charcode = strings.TrimSpace(charcode) + strings.Repeat(" ", diffLength)
+		}
+		fmt.Fprintf(w, "\"%s c %s\",\n", charcode, hexColor)
+		lookup[hexColor] = charcode
+		index++
+		charcode = inc(charcode, enc.AllowedLetters)
+
+		// check if the color ID may cause problems
+		for !validColorID(charcode) {
+			// try the next one
+			charcode = inc(charcode, enc.AllowedLetters)
+		}
 	}
 
 	// Now write the pixels, as character codes
@@ -268,10 +383,7 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		fmt.Fprintf(w, "\"")
 		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
 			c := m.At(x, y)
-			if enc.MaxColors == 256 {
-				c = pal.Convert(c)
-			}
-			charcode := lookup[c2hex(c, enc.AlphaThreshold)]
+			charcode = lookup[c2hex(c, enc.AlphaThreshold)]
 			// Now write the id code for the hex color to the file
 			fmt.Fprint(w, charcode)
 		}
