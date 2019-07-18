@@ -37,6 +37,7 @@ type Encoder struct {
 	MaxColors int
 }
 
+// NewEncoder creates a new Encoder configuration struct
 func NewEncoder(imageName string) *Encoder {
 	var validIdentifier []rune
 	for _, letter := range imageName {
@@ -150,11 +151,11 @@ func num2charcode(num int, allowedLetters []rune) string {
 
 // Encode will encode the given image as XBM, using a custom image name from
 // the Encoder struct. The given palette will be used.
-func (enc *Encoder) EncodePaletted(w io.Writer, m image.Paletted) error {
+func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
 
-	pal := m.Palette
+	pal := m.ColorModel().(color.Palette)
 
 	fmt.Println("pal", pal)
 	fmt.Println("yes?", pal.Index(color.RGBA{52, 52, 52, 0}))
@@ -259,6 +260,11 @@ func (enc *Encoder) EncodePaletted(w io.Writer, m image.Paletted) error {
 // Encode will encode the given image as XBM, using a custom image name from
 // the Encoder struct.
 func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
+
+	if pi, ok := m.(image.PalettedImage); ok {
+		return enc.encodePaletted(w, pi)
+	}
+
 	width := m.Bounds().Dx()
 	height := m.Bounds().Dy()
 
