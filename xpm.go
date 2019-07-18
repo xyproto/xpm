@@ -1,8 +1,8 @@
 package xpm
 
 import (
-	"errors"
 	"fmt"
+	"github.com/xyproto/palgen"
 	"image"
 	"image/color"
 	"io"
@@ -157,18 +157,11 @@ func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 
 	pal := m.ColorModel().(color.Palette)
 
-	fmt.Println("pal", pal)
-	fmt.Println("yes?", pal.Index(color.RGBA{52, 52, 52, 0}))
-
-	paletteMap := make(map[string]color.Color) // hexstring -> color, unordered
-	for y := m.Bounds().Min.Y; y < m.Bounds().Max.Y; y++ {
-		for x := m.Bounds().Min.X; x < m.Bounds().Max.X; x++ {
-			c := m.At(x, y)
-			paletteMap[c2hex(c, enc.AlphaThreshold)] = c
-		}
+	// Store all colors in a map, from hexstring to color, unordered
+	paletteMap := make(map[string]color.Color)
+	for _, c := range pal {
+		paletteMap[c2hex(c, enc.AlphaThreshold)] = c
 	}
-
-	fmt.Println("paletteMap (0)", paletteMap)
 
 	var paletteSlice []string // hexstrings, ordered
 	// First append the "None" color, for transparency, so that it is first
@@ -185,13 +178,15 @@ func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 		paletteSlice = append(paletteSlice, hexColor)
 	}
 
-	fmt.Println("paletteMap (1)", paletteMap)
-	fmt.Println("paletteSlice (0)", paletteSlice)
-
 	// Find the character code of the highest index
 	highestCharCode := num2charcode(len(paletteSlice)-1, enc.AllowedLetters)
 	charsPerPixel := len(highestCharCode)
 	colors := len(paletteSlice)
+
+	// Imlib does not like this
+	if colors > 32766 {
+		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
+	}
 
 	// Write the header, now that we know the right values
 	fmt.Fprint(w, "/* XPM */\n")
@@ -200,11 +195,6 @@ func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 		fmt.Fprint(w, "/* Values */\n")
 	}
 	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
-
-	// Imlib does not like this
-	if colors > 32766 {
-		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
-	}
 
 	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
 	if enc.Comments {
@@ -297,6 +287,21 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	charsPerPixel := len(highestCharCode)
 	colors := len(paletteSlice)
 
+	//// Imlib does not like this
+	//if colors > 32766 {
+	//	fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters %d\n", colors)
+	//}
+
+	if colors > enc.MaxColors {
+		// TODO: Implement support for 4096 colors in palgen
+		// Too many colors, reducing to a maximum of 256 colors
+		palettedImage, err := palgen.Convert(m)
+		if err != nil {
+			return err
+		}
+		return enc.Encode(w, palettedImage)
+	}
+
 	// Write the header, now that we know the right values
 	fmt.Fprint(w, "/* XPM */\n")
 	fmt.Fprintf(w, "static char *%s[] = {\n", enc.ImageName)
@@ -304,15 +309,6 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		fmt.Fprint(w, "/* Values */\n")
 	}
 	fmt.Fprintf(w, "\"%d %d %d %d\",\n", width, height, colors, charsPerPixel)
-
-	// Imlib does not like this
-	if colors > 32766 {
-		fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters: %d\n", colors)
-	}
-
-	if colors > enc.MaxColors {
-		return errors.New("too many colors")
-	}
 
 	// Write the colors of paletteSlice, and generate a lookup table from hexColor to charcode
 	if enc.Comments {

@@ -2,4 +2,4 @@ module github.com/xyproto/xpm
 
 go 1.12
 
-require github.com/xyproto/palgen v2.0.0+incompatible
+require github.com/xyproto/palgen v0.0.0-20190718204031-36cb97616bac
