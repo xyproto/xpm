@@ -7,7 +7,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"github.com/xyproto/palgen"
 )
 
 func main() {
