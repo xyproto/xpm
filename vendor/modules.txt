@@ -1,0 +1,2 @@
+# github.com/xyproto/palgen v2.0.0+incompatible
+github.com/xyproto/palgen
