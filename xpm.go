@@ -202,7 +202,7 @@ func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 	}
 	lookup := make(map[string]string) // hexcolor -> paletteindexchars, unordered
 	charcode := strings.Repeat(string(enc.AllowedLetters[0]), charsPerPixel)
-	for index, hexColor := range paletteSlice {
+	for _, hexColor := range paletteSlice {
 		trimmed := strings.TrimSpace(charcode)
 		if len(trimmed) < len(charcode) {
 			diffLength := len(charcode) - len(trimmed)
@@ -210,7 +210,6 @@ func (enc *Encoder) encodePaletted(w io.Writer, m image.PalettedImage) error {
 		}
 		fmt.Fprintf(w, "\"%s c %s\",\n", charcode, hexColor)
 		lookup[hexColor] = charcode
-		index++
 		charcode = inc(charcode, enc.AllowedLetters)
 
 		// check if the color ID may cause problems
@@ -287,7 +286,7 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	charsPerPixel := len(highestCharCode)
 	colors := len(paletteSlice)
 
-	//// Imlib does not like this
+	// Imlib does not like this
 	//if colors > 32766 {
 	//	fmt.Fprintf(os.Stderr, "WARNING: Too many colors for some XPM interpreters %d\n", colors)
 	//}
@@ -316,7 +315,7 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	}
 	lookup := make(map[string]string) // hexcolor -> paletteindexchars, unordered
 	charcode := strings.Repeat(string(enc.AllowedLetters[0]), charsPerPixel)
-	for index, hexColor := range paletteSlice {
+	for _, hexColor := range paletteSlice {
 		trimmed := strings.TrimSpace(charcode)
 		if len(trimmed) < len(charcode) {
 			diffLength := len(charcode) - len(trimmed)
@@ -324,7 +323,6 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 		}
 		fmt.Fprintf(w, "\"%s c %s\",\n", charcode, hexColor)
 		lookup[hexColor] = charcode
-		index++
 		charcode = inc(charcode, enc.AllowedLetters)
 
 		// check if the color ID may cause problems
