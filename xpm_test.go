@@ -44,7 +44,7 @@ func TestNum2charcode2(t *testing.T) {
 	}
 }
 
-func ExampleHexify() {
+func Example_hexify() {
 	fmt.Println(hexify([]byte{0, 7, 0x80, 0xff}))
 	// Output:
 	// [0x00 0x07 0x80 0xff]
