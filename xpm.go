@@ -2,20 +2,22 @@ package xpm
 
 import (
 	"fmt"
-	"github.com/xyproto/palgen"
 	"image"
 	"image/color"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/xyproto/palgen"
 )
 
 const azAZ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // AllowedLetters is the 93 available ASCII letters
 // ref: https://en.wikipedia.org/wiki/X_PixMap
-// They are in the same order as GIMP, but with the question mark character as well.
-// Double question marks may result in trigraphs in C, but this is avoided in the code.
+// They are in the same order as GIMP, but with the question mark character as
+// well. Double question marks may result in trigraphs in C, but this is
+// avoided by checking specifically for this.
 // ref: https://en.wikipedia.org/wiki/Digraphs_and_trigraphs#C
 const AllowedLetters = " .+@#$%&*=-;>,')!~{]^/(_:<[}|1234567890" + azAZ + "`?"
 
@@ -33,7 +35,7 @@ type Encoder struct {
 	// These are used when encoding the color ID as ASCII
 	AllowedLetters []rune
 
-	// MaxColors is the maximum allowed number of colors, or -1 for no limit. The default is 4096.
+	// MaxColors is the maximum allowed number of colors, or -1 for no limit. The default is 256.
 	MaxColors int
 }
 
@@ -292,7 +294,6 @@ func (enc *Encoder) Encode(w io.Writer, m image.Image) error {
 	//}
 
 	if colors > enc.MaxColors {
-		// TODO: Implement support for 4096 colors in palgen
 		// Too many colors, reducing to a maximum of 256 colors
 		palettedImage, err := palgen.Convert(m)
 		if err != nil {
