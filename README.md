@@ -48,6 +48,10 @@ if err != nil {
 }
 ```
 
+## Reference documentation
+
+* The [XPM pdf](https://www.xfree86.org/current/xpm.pdf)
+
 ## General info
 
 * Version: 2.1.0
