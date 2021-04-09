@@ -11,15 +11,20 @@ import (
 	"github.com/xyproto/palgen"
 )
 
-const azAZ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	// VersionString contains the current package name and version
+	VersionString = "xpm 2.2.0"
 
-// AllowedLetters is the 93 available ASCII letters
-// ref: https://en.wikipedia.org/wiki/X_PixMap
-// They are in the same order as GIMP, but with the question mark character as
-// well. Double question marks may result in trigraphs in C, but this is
-// avoided by checking specifically for this.
-// ref: https://en.wikipedia.org/wiki/Digraphs_and_trigraphs#C
-const AllowedLetters = " .+@#$%&*=-;>,')!~{]^/(_:<[}|1234567890" + azAZ + "`?"
+	azAZ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	// AllowedLetters is the 93 available ASCII letters
+	// ref: https://en.wikipedia.org/wiki/X_PixMap
+	// They are in the same order as GIMP, but with the question mark character as
+	// well. Double question marks may result in trigraphs in C, but this is
+	// avoided by checking specifically for this.
+	// ref: https://en.wikipedia.org/wiki/Digraphs_and_trigraphs#C
+	AllowedLetters = " .+@#$%&*=-;>,')!~{]^/(_:<[}|1234567890" + azAZ + "`?"
+)
 
 // Encoder contains encoding configuration that is used by the Encode method
 type Encoder struct {
