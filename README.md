@@ -1,11 +1,13 @@
-# xpm [![Build Status](https://travis-ci.com/xyproto/xpm.svg?branch=master)](https://travis-ci.com/xyproto/xpm) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm)
+# xpm
+
+![Build Status](https://github.com/xyproto/xpm/workflows/Build/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm) [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://raw.githubusercontent.com/xyproto/xpm/main/LICENSE)
 
 Encode images to the X PixMap (XPM3) image format.
 
 The resulting images are smaller than the one from GIMP, since the question mark character is also used, while at the same time avoiding double question marks, which could result in a trigraph (like `??=`, which has special meaning in C).
 
 
-Includes a `png2xpm` utility.
+The `png2xpm` utility is included.
 
 ## Example use
 
