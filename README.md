@@ -52,7 +52,7 @@ if err != nil {
 
 ## Reference documentation
 
-* The [XPM pdf](https://www.xfree86.org/current/xpm.pdf)
+* [The XPM reference](https://www.xfree86.org/current/xpm.pdf)
 
 ## General info
 
