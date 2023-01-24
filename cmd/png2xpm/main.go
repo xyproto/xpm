@@ -46,9 +46,6 @@ func main() {
 		imageName = outputFilenameBase[:len(outputFilenameBase)-len(filepath.Ext(outputFilenameBase))]
 	}
 
-	// Create a new XPM encoder
-	enc := xpm.NewEncoder(imageName)
-
 	// Open the PNG file
 	f, err := os.Open(inputFilename)
 	if err != nil {
@@ -61,6 +58,9 @@ func main() {
 		os.Exit(1)
 	}
 	f.Close()
+
+	// Create a new XPM encoder
+	enc := xpm.NewEncoder(imageName)
 
 	// Prepare to output the XPM data to either stdout or to file
 	if outputFilename == "-" {
