@@ -1,4 +1,4 @@
 # github.com/lucasb-eyer/go-colorful v1.2.0
 github.com/lucasb-eyer/go-colorful
-# github.com/xyproto/palgen v1.0.1-0.20191014132556-f8cafa988771
+# github.com/xyproto/palgen v1.2.0
 github.com/xyproto/palgen
