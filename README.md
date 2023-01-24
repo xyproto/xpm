@@ -1,6 +1,6 @@
 # xpm
 
-![Build Status](https://github.com/xyproto/xpm/workflows/Build/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm) [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://raw.githubusercontent.com/xyproto/xpm/main/LICENSE)
+![Build Status](https://github.com/xyproto/xpm/workflows/Build/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm) [![License](https://img.shields.io/badge/license-BSD-blue.svg?style=flat)](https://raw.githubusercontent.com/xyproto/xpm/main/LICENSE)
 
 Encode images to the X PixMap (XPM3) image format.
 
@@ -14,9 +14,6 @@ The `png2xpm` utility is included.
 Converting from a PNG to an XPM file:
 
 ```go
-// Create a new XPM encoder
-enc := xpm.NewEncoder(imageName)
-
 // Open the PNG file
 f, err := os.Open(inputFilename)
 if err != nil {
@@ -29,6 +26,9 @@ if err != nil {
     os.Exit(1)
 }
 f.Close()
+
+// Create a new XPM encoder
+enc := xpm.NewEncoder(imageName)
 
 // Prepare to output the XPM data to either stdout or to file
 if outputFilename == "-" {
@@ -56,6 +56,6 @@ if err != nil {
 
 ## General info
 
-* Version: 2.2.0
-* License: MIT
+* Version: 2.2.1
+* License: BSD-3
 * Author: Alexander F. Rødseth &lt;xyproto@archlinux.org&gt;
