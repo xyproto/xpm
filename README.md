@@ -1,6 +1,7 @@
 # xpm
 
-![Build Status](https://github.com/xyproto/xpm/workflows/Build/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm) [![License](https://img.shields.io/badge/license-BSD-blue.svg?style=flat)](https://raw.githubusercontent.com/xyproto/xpm/main/LICENSE)
+[![Go](https://github.com/xyproto/xpm/actions/workflows/go.yml/badge.svg)](https://github.com/xyproto/xpm/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/xpm)](https://goreportcard.com/report/github.com/xyproto/xpm) [![GoDoc](https://godoc.org/github.com/xyproto/xpm?status.svg)](https://godoc.org/github.com/xyproto/xpm) [![License](https://img.shields.io/badge/license-BSD-blue.svg?style=flat)](https://raw.githubusercontent.com/xyproto/xpm/main/LICENSE)
 
 Encode images to the X PixMap (XPM3) image format.
 
