@@ -7,7 +7,7 @@ Encode images to the X PixMap (XPM3) image format.
 
 The resulting images are smaller than the ones from GIMP, since the question mark character is also used, while at the same time avoiding double question marks, which could result in a trigraph (like `??=`, which has special meaning in C).
 
-Note that the number of colors may be reduced as part of the conversion.
+Note that the number of colors may be reduced as part of the conversion (some XPM image viewers does not allow over 32766 colors).
 
 The `png2xpm` utility is included.
 
