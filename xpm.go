@@ -144,7 +144,7 @@ func validColorID(s string) bool {
 func num2charcode(num int, allowedLetters []rune) string {
 	// This is not the efficient way, but it's only called once per image conversion
 	d := string(allowedLetters[0])
-	for i := 0; i < num; i++ {
+	for range num {
 		d = inc(d, allowedLetters)
 
 		// check if the color ID may cause problems
