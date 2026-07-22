@@ -13,7 +13,7 @@ import (
 
 const (
 	// VersionString contains the current package name and version
-	VersionString = "xpm 1.3.0"
+	VersionString = "xpm 1.3.1"
 
 	azAZ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
