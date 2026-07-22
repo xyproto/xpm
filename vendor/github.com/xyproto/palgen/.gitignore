@@ -16,6 +16,7 @@ cmd/png256/png256
 cmd/png2gpl/png2gpl
 cmd/png2act/png2act
 cmd/png2png/png2png
+cmd/pngn/pngn
 
 cmd/png2act/*.act
 cmd/png2gpl/burn.gpl
@@ -34,3 +35,5 @@ internal/burn/burn.gpl
 internal/general/burn.gpl
 internal/plan9/plan9.gpl
 internal/websafe/websafe.gpl
+
+.DS_Store
