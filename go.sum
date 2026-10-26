@@ -1,7 +1,7 @@
-github.com/lucasb-eyer/go-colorful v1.4.0 h1:UtrWVfLdarDgc44HcS7pYloGHJUjHV/4FwW4TvVgFr4=
-github.com/lucasb-eyer/go-colorful v1.4.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
-github.com/peterhellberg/gfx v0.0.0-20260528221839-3f985a9df2a8 h1:D2GtBHuSjFDv55DBliwi3FzR/7g3/PitasBvgWOiBp4=
-github.com/peterhellberg/gfx v0.0.0-20260528221839-3f985a9df2a8/go.mod h1:qGp0boEPIQQgCfeuqotDqMoj4bZjWMdPW3Fc+BjzOdk=
+github.com/lucasb-eyer/go-colorful v1.4.1 h1:1EO+WB73+EH8EVbzlrG3KLAfEypQWVHIBqlTf+2hNss=
+github.com/lucasb-eyer/go-colorful v1.4.1/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
+github.com/peterhellberg/gfx v0.0.0-20260907063546-85ca1d9df3fe h1:/0T59h8KRJO/TZ6oh/A+JgzXb4c8TGtFJqUNSXWWFJc=
+github.com/peterhellberg/gfx v0.0.0-20260907063546-85ca1d9df3fe/go.mod h1:qGp0boEPIQQgCfeuqotDqMoj4bZjWMdPW3Fc+BjzOdk=
 github.com/xyproto/burnpal v1.1.1 h1:JNsB8+ooXYcZdbiQW7pY3pZJy85g9WulUGyqH1D1xdU=
 github.com/xyproto/burnpal v1.1.1/go.mod h1:yts/hiEcLTBpbilHmMwiQ6qVZnnqkN0DGvBSoHHJw6c=
 github.com/xyproto/palgen v1.7.3 h1:iJBciQKbviwGk9RiCZh1GuEbPy3EZqU7kA3Z9XH+8a4=
