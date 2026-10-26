@@ -22,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Println("png2xpm 1.3.1")
+		fmt.Println("png2xpm 1.3.2")
 		os.Exit(0)
 	}
 
